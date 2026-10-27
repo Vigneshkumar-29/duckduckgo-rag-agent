@@ -102,6 +102,12 @@ def choose_source(
 
     question = state["question"]
 
+    # Without an uploaded document, every question uses web search.
+    if vectordb is None:
+        return {
+            "decision": "SEARCH_WEB"
+        }
+
     # FAISS returns a smaller distance for a better document match.
     _, score = vectordb.similarity_search_with_score(
         question,

@@ -27,6 +27,7 @@ It is built around a LangGraph workflow, with the logic split across the main ap
 ## Features
 
 - Upload and process local text documents
+- ChatGPT-style chat interface with a **+** button for TXT uploads
 - Query the document using semantic retrieval
 - Answer from document chunks when they contain the answer
 - Automatically fall back to DuckDuckGo when the document does not answer the question

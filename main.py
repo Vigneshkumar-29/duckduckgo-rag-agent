@@ -5,184 +5,112 @@ import streamlit as st
 from rag import create_rag
 from agent import create_agent, run_agent
 
-
-# ==========================================
-# PAGE CONFIG
-# ==========================================
-
 st.set_page_config(
-    page_title="AI Agent RAG",
+    page_title="AI Document Assistant",
     page_icon="🤖",
     layout="centered"
 )
 
-
-# ==========================================
-# TITLE
-# ==========================================
-
-st.title(
-    "🤖 AI Agent RAG System"
+st.markdown(
+    """
+    <style>
+        .block-container {
+            max-width: 900px;
+            padding-top: 2rem;
+            padding-bottom: 7rem;
+        }
+        [data-testid="stChatInput"] {
+            padding-bottom: 1rem;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
 )
 
-st.write(
-    "Upload a document and ask questions "
-    "using RAG or web search."
+if "messages" not in st.session_state:
+    st.session_state.messages = [
+        {
+            "role": "assistant",
+            "content": (
+                "Hi! Ask me anything, or upload a TXT document with the "
+                "**+** button. I use DuckDuckGo when a document is not "
+                "available or does not have the answer."
+            )
+        }
+    ]
+
+if "agent" not in st.session_state:
+    st.session_state.agent = create_agent(None)
+
+st.title("🤖 AI Document Assistant")
+st.caption("Ask about your document or let me search the web.")
+
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+prompt = st.chat_input(
+    "Ask a question or attach a TXT document...",
+    accept_file=True,
+    file_type=["txt"]
 )
 
+if prompt:
+    uploaded_file = prompt.files[0] if prompt.files else None
+    question = prompt.text.strip()
 
-# ==========================================
-# FILE UPLOAD
-# ==========================================
+    if uploaded_file:
+        upload_message = f"📄 Uploaded **{uploaded_file.name}**"
 
-uploaded_file = st.file_uploader(
-    "Upload your document",
-    type=["txt"]
-)
-
-
-# ==========================================
-# PROCESS DOCUMENT
-# ==========================================
-
-if uploaded_file is not None:
-
-    st.success(
-        "Document uploaded successfully! ✅"
-    )
-
-
-    # --------------------------------------
-    # Process button
-    # --------------------------------------
-
-    if st.button(
-        "Process Document",
-        type="primary"
-    ):
+        with st.chat_message("user"):
+            st.markdown(upload_message)
 
         try:
+            with st.spinner("Reading and indexing your document..."):
+                data = uploaded_file.getvalue().decode("utf-8")
+                vectordb = create_rag(data)
+                st.session_state.agent = create_agent(vectordb)
 
-            with st.spinner(
-                "Processing document..."
-            ):
-
-                # Read uploaded file
-                data = uploaded_file.read().decode(
-                    "utf-8"
-                )
-
-
-                # Create RAG
-                vectordb = create_rag(
-                    data
-                )
-
-
-                # Create Agent
-                agent = create_agent(
-                    vectordb
-                )
-
-
-                # Store agent
-                st.session_state[
-                    "agent"
-                ] = agent
-
-
-            st.success(
-                "Document processed successfully! 🚀"
+            response = (
+                f"Your document **{uploaded_file.name}** is ready. "
+                "What would you like to know?"
             )
-
 
         except Exception as e:
+            response = f"I could not process that document: {e}"
 
-            st.error(
-                f"Error while processing document: {e}"
-            )
+        with st.chat_message("assistant"):
+            st.markdown(response)
 
+        st.session_state.messages.append(
+            {"role": "user", "content": upload_message}
+        )
+        st.session_state.messages.append(
+            {"role": "assistant", "content": response}
+        )
 
-# ==========================================
-# ASK QUESTION
-# ==========================================
+    if question:
+        st.session_state.messages.append(
+            {"role": "user", "content": question}
+        )
 
-if "agent" in st.session_state:
+        with st.chat_message("user"):
+            st.markdown(question)
 
-    st.divider()
-
-    st.subheader(
-        "Ask a Question"
-    )
-
-
-    # --------------------------------------
-    # Question input
-    # --------------------------------------
-
-    query = st.text_input(
-        "Enter your question:"
-    )
-
-
-    # --------------------------------------
-    # Ask button
-    # --------------------------------------
-
-    if st.button(
-        "Ask",
-        type="primary"
-    ):
-
-        if not query.strip():
-
-            st.warning(
-                "Please enter a question."
-            )
-
-        else:
-
+        with st.chat_message("assistant"):
             try:
-
-                with st.spinner(
-                    "Thinking..."
-                ):
-
-                    answer = run_agent(
-                        st.session_state[
-                            "agent"
-                        ],
-                        query
+                with st.spinner("Thinking..."):
+                    response = run_agent(
+                        st.session_state.agent,
+                        question
                     )
 
-
-                # ----------------------------------
-                # Display answer
-                # ----------------------------------
-
-                st.subheader(
-                    "Answer"
-                )
-
-                st.write(
-                    answer
-                )
-
+                st.markdown(response)
 
             except Exception as e:
+                response = f"I could not answer that question: {e}"
+                st.error(response)
 
-                st.error(
-                    f"Error while answering: {e}"
-                )
-
-
-# ==========================================
-# INFORMATION
-# ==========================================
-
-else:
-
-    st.info(
-        "Upload a TXT document and click "
-        "'Process Document' to start."
-    )
+        st.session_state.messages.append(
+            {"role": "assistant", "content": response}
+        )
