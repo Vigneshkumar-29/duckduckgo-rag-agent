@@ -1,33 +1,38 @@
-# DuckDuckGo AI RAG Agent
+# DuckDuckGo AI RAG Agent with Voice-to-Text
 
-This project is a small AI application that combines:
+This project is an AI application that combines:
 
 - a document-based retrieval pipeline using FAISS and embeddings
 - document-match routing that chooses the uploaded file or the web
 - a web search tool using DuckDuckGo
-- a Streamlit interface for uploading a text document and asking questions
+- **AssemblyAI voice-to-text conversion** for spoken voice questions
+- a ChatGPT-style chat interface with a built-in voice button and **+** button for TXT uploads
 
-It is built around a LangGraph workflow, with the logic split across the main app, the agent orchestration, and the RAG pipeline.
+It is built around a LangGraph workflow, with the logic split across the main app, the agent orchestration, the RAG pipeline, and the voice-to-text service.
 
 ## Project structure
 
-- `main.py` – Streamlit frontend for uploading a document and asking questions
+- `main.py` – Streamlit frontend with query box supporting text, voice recording, and TXT attachments
+- `voice_to_text.py` – AssemblyAI integration for transcribing voice queries and audio files
 - `agent.py` – LangGraph agent, decision routing, web search tool, final answer generation
 - `rag.py` – document preprocessing, chunking, embeddings, FAISS vector store, retrieval logic
+- `.env` / `.env.example` – environment file for your AssemblyAI API key
 
 ## How it works
 
-1. The user uploads a `.txt` document in the Streamlit app.
-2. The app calls `create_rag(data)` in `rag.py`.
-3. The document is split into chunks, embedded, and stored in a FAISS vector database.
-4. When the user asks a question, the app checks how closely it matches the uploaded document.
-5. A close match is answered from the document. Otherwise, DuckDuckGo searches the web.
-6. Each answer shows whether it came from the uploaded document or DuckDuckGo web search.
+1. **Document Upload**: The user uploads a `.txt` document using the **+** button in the query box.
+2. **Indexing**: The document is split into chunks, embedded, and stored in a FAISS vector database.
+3. **Asking Questions**: Users can ask questions by typing or by clicking the voice recording button in the query box.
+4. **Voice Transcription**: Spoken audio is transcribed to text using AssemblyAI.
+5. **Smart Routing**: When a question is asked, the agent checks how closely it matches the uploaded document.
+6. A close match is answered from the document. Otherwise, DuckDuckGo searches the web.
+7. Each answer displays whether it came from the uploaded document or DuckDuckGo web search.
 
 ## Features
 
-- Upload and process local text documents
-- ChatGPT-style chat interface with a **+** button for TXT uploads
+- **Voice to Text**: Speak directly into the chat query box using the microphone button (powered by AssemblyAI)
+- Upload and process local text documents (.txt) with the **+** attachment button
+- Clean chat interface with voice button built directly into the query box
 - Query the document using semantic retrieval
 - Answer from document chunks when they contain the answer
 - Automatically fall back to DuckDuckGo when the document does not answer the question
@@ -37,10 +42,10 @@ It is built around a LangGraph workflow, with the logic split across the main ap
 
 ## Requirements
 
-Install the Python packages required by the project, including:
+Install the Python packages:
 
 ```bash
-pip install streamlit langchain_ollama langchain_core langgraph ddgs langchain_text_splitters langchain_community langchain_huggingface huggingface_hub contractions spacy
+pip install -r requirements.txt
 ```
 
 You will also need:
@@ -53,6 +58,12 @@ You will also need:
 python -m spacy download en_core_web_sm
 ```
 
+- An AssemblyAI API key:
+  - Add your key to the `.env` file in the project root:
+    ```env
+    ASSEMBLYAI_API_KEY=your_assemblyai_api_key_here
+    ```
+
 Hugging Face may download the embedding model the first time the app processes a document.
 
 ## Run the app
@@ -64,61 +75,5 @@ streamlit run main.py
 ```
 
 Then:
-
-1. upload a text file
-2. click `Process Document`
-3. ask a question in the input box
-4. click `Ask`
-
-## Notes
-
-- The app is designed for `.txt` files only.
-- The `ddgs` package is used for general web queries outside the uploaded document.
-- The retrieval logic relies on embeddings and semantic similarity to find the most relevant document chunks.
-- The code is a prototype/demo application and may need tuning for production use.
-
-## Screenshots
-
-### Upload and process a document
-
-Upload a TXT file, then click **Process Document** to create the searchable document index.
-
-![Upload and process a document](assets/upload-and-process.png)
-
-### Ask a question about the document
-
-Questions answered from the uploaded content are labelled **Source: Uploaded document**.
-
-![Document answer](assets/document-answer.png)
-
-### Answering a question
-
-The app displays a short loading message while it retrieves the best matching chunks and generates an answer.
-
-![Thinking while answering](assets/thinking.png)
-
-### DuckDuckGo fallback
-
-If the uploaded document does not contain the answer, the app searches DuckDuckGo and labels the result **Source: DuckDuckGo web search**.
-
-![DuckDuckGo web-search answer](assets/web-search-answer.png)
-
-## Example workflow
-
-```text
-Upload: company_policy.txt
-Question: What are the first three steps in the onboarding process?
-
-Document match is strong
-Retrieval finds relevant chunks from the uploaded text
-Answer source: Uploaded document
-```
-
-```text
-Upload: unrelated document
-Question: What is the capital of France?
-
-Document does not contain an answer
-DuckDuckGo search returns sources
-Answer source: DuckDuckGo web search
-```
+1. Upload a text file with the **+** button in the query box
+2. Type a question or click the microphone button in the query box to speak

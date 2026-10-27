@@ -1,0 +1,13 @@
+streamlit
+langchain-ollama
+langchain-core
+langgraph
+ddgs
+langchain-text-splitters
+langchain-community
+langchain-huggingface
+huggingface-hub
+contractions
+spacy
+assemblyai
+python-dotenv

@@ -4,6 +4,7 @@ import streamlit as st
 
 from rag import create_rag
 from agent import create_agent, run_agent
+from voice_to_text import is_api_key_configured, transcribe_audio
 
 st.set_page_config(
     page_title="AI Document Assistant",
@@ -32,9 +33,9 @@ if "messages" not in st.session_state:
         {
             "role": "assistant",
             "content": (
-                "Hi! Ask me anything, or upload a TXT document with the "
-                "**+** button. I use DuckDuckGo when a document is not "
-                "available or does not have the answer."
+                "Hi! Ask me anything by typing or using the voice button, "
+                "or upload a TXT document with the **+** button. I use DuckDuckGo "
+                "when a document is not available or does not have the answer."
             )
         }
     ]
@@ -50,14 +51,16 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
 prompt = st.chat_input(
-    "Ask a question or attach a TXT document...",
+    "Ask a question, record voice, or attach a TXT document...",
     accept_file=True,
-    file_type=["txt"]
+    file_type=["txt"],
+    accept_audio=True
 )
 
 if prompt:
     uploaded_file = prompt.files[0] if prompt.files else None
-    question = prompt.text.strip()
+    audio_recording = getattr(prompt, "audio", None)
+    question = prompt.text.strip() if prompt.text else ""
 
     if uploaded_file:
         upload_message = f"📄 Uploaded **{uploaded_file.name}**"
@@ -88,6 +91,24 @@ if prompt:
         st.session_state.messages.append(
             {"role": "assistant", "content": response}
         )
+
+    # Transcribe voice input from the query box using AssemblyAI
+    if audio_recording:
+        if not is_api_key_configured():
+            st.error(
+                "AssemblyAI API key not found. "
+                "Please add `ASSEMBLYAI_API_KEY=your_key` to your `.env` file."
+            )
+        else:
+            with st.spinner("Transcribing your voice with AssemblyAI..."):
+                try:
+                    transcribed_text = transcribe_audio(audio_recording)
+                    if transcribed_text and transcribed_text.strip():
+                        question = transcribed_text.strip()
+                    else:
+                        st.warning("No speech detected in the audio recording.")
+                except Exception as e:
+                    st.error(f"Voice transcription failed: {e}")
 
     if question:
         st.session_state.messages.append(
